@@ -28,5 +28,5 @@ DB_NAME=database name to connect to. postgres only
 2. Docker compose extension
 #### Steps
 1. `docker compose up -d`
-2. Profit
+2. Profit  
 Docker going to use PostgreSQL by default.
