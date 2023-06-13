@@ -30,3 +30,11 @@ DB_NAME=database name to connect to. postgres only
 1. `docker compose up -d`
 2. Profit  
 Docker going to use PostgreSQL by default.
+
+### Note
+If you are running it behind nginx, then you should add this so it reflects the domain and the port and not `localhost:port`
+```nginx
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+```
