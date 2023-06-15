@@ -20,11 +20,12 @@ async def start():
     await db.connect()
     await db.execute("""
 CREATE TABLE IF NOT EXISTS redirect (
-    id TEXT NOT NULL UNIQUE,
+    id TEXT NOT NULL,
     url TEXT NOT NULL,
     accessed BIGINT NOT NULL
 )
                """)
+    print(await db.fetch("SELECT * FROM redirect"))
     
 @ext.get("/add")
 async def add(url: str, request: fastapi.Request) -> fastapi.responses.PlainTextResponse:
@@ -84,6 +85,33 @@ async def modify(id: str, url: str) -> fastapi.responses.PlainTextResponse:
         await db.rollback()
         return fastapi.responses.PlainTextResponse("Failed to change the URL!")
     return fastapi.responses.PlainTextResponse("Success")
+
+@ext.get("/info/{id:str}")
+async def info(id: str) -> fastapi.responses.PlainTextResponse:
+    """
+    Info about a redirect URL from the database. Returns the URL and the number of times it has been accessed.
+    """
+    con = await db.fetch("SELECT url, accessed FROM redirect WHERE id = ?", (id,))
+    if len(con) == 0:
+        return fastapi.responses.PlainTextResponse("No redirect with that UUID4 found!")
+    url, access_num = con[0]
+    return fastapi.responses.PlainTextResponse(f"URL: {url}\nAccessed: {access_num} times")
+
+
+
+@ext.get("/list")
+async def listing() -> fastapi.responses.PlainTextResponse:
+    """
+    List all redirect URLS with it's ID
+    """
+    con = await db.fetch("SELECT * FROM redirect")
+    print(con)
+    if len(con) == 0:
+        return fastapi.responses.PlainTextResponse("No redirect URLs has been added yet.",404)
+    text = "List of redirect URLs recorded in database.\n"
+    for id, url, _ in con:
+        text += f"URL: {url}, ID: {id}\n"
+    return fastapi.responses.PlainTextResponse(text)
     
 @ext.get(
     "/{id:str}"
@@ -100,14 +128,3 @@ async def access(id: str):
     await db.execute("UPDATE redirect SET accessed = ? WHERE id = ?", (access_num, id))
     await db.commit()
     return fastapi.responses.RedirectResponse(url)
-
-@ext.get("/info/{id:str}")
-async def info(id: str) -> fastapi.responses.PlainTextResponse:
-    """
-    Info about a redirect URL from the database. Returns the URL and the number of times it has been accessed.
-    """
-    con = await db.fetch("SELECT url, accessed FROM redirect WHERE id = ?", (id,))
-    if len(con) == 0:
-        return fastapi.responses.PlainTextResponse("No redirect with that UUID4 found!")
-    url, access_num = con[0]
-    return fastapi.responses.PlainTextResponse(f"URL: {url}\nAccessed: {access_num} times")

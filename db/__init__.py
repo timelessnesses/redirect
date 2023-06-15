@@ -11,7 +11,7 @@ class Database:
     db_type: DatabaseType
     args: tuple
     kwargs: dict
-    connection: asyncpg.Connection | sqlite3.Connection
+    connection: typing.Union[asyncpg.Pool,sqlite3.Connection]
     
     def __init__(self, db_type: DatabaseType = DatabaseType.SQLITE, *args, **kwargs):
         self.db_type = db_type
@@ -21,7 +21,7 @@ class Database:
     
     async def connect(self):
         if self.db_type == DatabaseType.POSTGRES:
-            self.connection = await asyncpg.connect(*self.args, **self.kwargs)
+            self.connection = await asyncpg.create_pool(*self.args, **self.kwargs)
         elif self.db_type == DatabaseType.SQLITE:
             self.connection = sqlite3.connect(*self.args, **self.kwargs)
             
@@ -45,13 +45,14 @@ class Database:
         for i in range(len(query)-1):
             query[i] += f"${i+1}"
         print("".join(query), values)
-        await self.connection.execute(" ".join(query), *values)
+        async with self.connection.acquire() as connection:
+            await connection.execute(" ".join(query), *values)
         
     async def convert_postgres_to_sqlite3(self, query: str, values: tuple):
         self.connection.execute(query, values)
         self.connection.commit()
         
-    async def fetch(self, query: str, values: tuple):
+    async def fetch(self, query: str, values: tuple=tuple()) -> list:
         query = query.strip()
         if self.db_type == DatabaseType.POSTGRES:
             return await self.convert_sqlite3_to_postgres_fetch(query, values)
@@ -59,11 +60,16 @@ class Database:
             return await self.convert_postgres_to_sqlite3_fetch(query, values)
             
     async def convert_sqlite3_to_postgres_fetch(self, query: str, values: tuple) -> list:
+        query_s = query
         query = query.split("?")
-        del query[-1] # python quirks
-        for i in range(len(query)):
-            query[i] += f"${i+1}"
-        return await self.connection.fetch(" ".join(query), *values)
+        print(query)
+        if query_s.count("?") != 0:
+            del query[-1]
+            for i in range(len(query)):
+                query[i] += f"${i+1}"
+            
+        print(query)
+        return await self.connection.fetch(" ".join(query), *values) 
     
     async def convert_postgres_to_sqlite3_fetch(self, query: str, values: tuple) -> list:
         cur: sqlite3.Cursor = self.connection.execute(query, values)
