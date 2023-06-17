@@ -33,7 +33,7 @@ DB_NAME=database name to connect to. postgres only
 #### Steps
 
 1. `docker compose up -d`
-2. Profit
+2. Profit  
 Docker going to use PostgreSQL by default.
 
 ## Performance
@@ -127,4 +127,12 @@ Details (average, fastest, slowest):
 
 Status code distribution:
   [200] 8361 responses
+```
+
+## Note
+If you are running it behind nginx, then you should add this so it reflects the domain and the port and not `localhost:port`
+```nginx
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 ```

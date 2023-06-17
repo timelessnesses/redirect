@@ -128,3 +128,15 @@ async def access(id: str):
     await db.execute("UPDATE redirect SET accessed = ? WHERE id = ?", (access_num, id))
     await db.commit()
     return fastapi.responses.RedirectResponse(url)
+
+@ext.get("/info/{id:str}")
+async def info(id: str) -> fastapi.responses.PlainTextResponse:
+    """
+    Info about a redirect URL from the database. Returns the URL and the number of times it has been accessed.
+    """
+    con = await db.fetch("SELECT url, accessed FROM redirect WHERE id = ?", (id,))
+    if len(con) == 0:
+        return fastapi.responses.PlainTextResponse("No redirect with that UUID4 found!")
+    url, access_num = con[0]
+    return fastapi.responses.PlainTextResponse(f"URL: {url}\nAccessed: {access_num} times")
+
