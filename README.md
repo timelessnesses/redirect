@@ -38,6 +38,8 @@ Docker going to use PostgreSQL by default.
 
 ## Performance
 
+NOTE: all tested with `oha -z 10s http://localhost:8000/{uuid}`
+
 PostgreSQL
 
 ```shell
