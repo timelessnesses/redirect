@@ -151,7 +151,7 @@ async def access(id: str):
     """
     con = await db.fetch("SELECT url, accessed FROM redirect WHERE id = ?", (id,))
     if len(con) == 0:
-        return fastapi.responses.PlainTextResponse("No redirect with that UUID4 found!")
+        return fastapi.responses.PlainTextResponse("No redirect with that UUID4 found!",400)
     url, access_num = con[0]
     access_num += 1
     await db.execute("UPDATE redirect SET accessed = ? WHERE id = ?", (access_num, id))
