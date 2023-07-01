@@ -1,25 +1,84 @@
+use env_logger;
+use log;
 mod routes;
 
 fn build_config() -> String {
     format!(
-        "host={} port={} user={} password={} dbname={}",
-        std::env::var("DB_HOST").unwrap(),
-        std::env::var("DB_PORT").unwrap(),
+        "postgresql://{}:{}@{}:{}/{}",
         std::env::var("DB_USER").unwrap(),
         std::env::var("DB_PASSWORD").unwrap(),
+        std::env::var("DB_HOST").unwrap(),
+        std::env::var("DB_PORT").unwrap(),
         std::env::var("DB_NAME").unwrap()
     )
+}
+
+struct CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA{
+    file: std::fs::File
+}
+
+impl CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA {
+    fn new() -> Result<CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, std::io::Error> {
+        let x = std::fs::File::create("log.txt");
+        match x {
+            Ok(f) => return Ok(CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA {file: f}),
+            Err(e) => {
+                log::warn!("Cannot create log file.");
+                return Err(e);
+            }
+        }
+    }
+}
+
+impl std::io::Write for CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        println!("{}",std::str::from_utf8(buf).unwrap());
+        self.file.write(buf)
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        match std::io::stdout().flush() {
+            Err(e) => return Err(e),
+            Ok(_) => {
+                match self.file.flush() {
+                    Ok(_) => return Ok(()),
+                    Err(e) => return Err(e)
+                }
+            }
+        }
+    }
+}
+
+fn config_logger() {
+    let mut b = env_logger::Builder::from_default_env();
+    b.filter_level(log::LevelFilter::Debug);
+    b.target(env_logger::Target::Stdout);
+    let x = CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA::new();
+
+    match x {
+        Ok(file_info) => {
+            b.target(env_logger::Target::Pipe(Box::new(file_info)));
+        },
+        Err(e) => {
+            log::warn!("{}",format!("Logger cannot create or write to log.txt. {}", e));
+        }
+    }
+    b.init();
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv::dotenv().ok();
 
+    config_logger();
+
     let mut db_type_s = String::new();
     let db_type = std::env::var("DB_TYPE");
     match db_type {
         Ok(s) => db_type_s = s,
-        Err(_) => panic!("Database type not found!"),
+        Err(_) => {
+            log::error!("No enviroment variable found for DB_TYPE.");
+            panic!()
+        },
     }
 
     let postgres_db: std::sync::Arc<Option<tokio_postgres::Client>>;
@@ -32,26 +91,36 @@ async fn main() -> std::io::Result<()> {
                 sqlite3_db = std::sync::Arc::new(None);
                 tokio::spawn(async move {
                     conn.await.expect("Lost database connection. Restarting.");
-                    panic!("Lost database connection. :(");
+                    log::error!("Lost database connection. :(");
+                    panic!();
                 });
+                log::info!("Successfully connected to PostgreSQL!");
             }
             Err(e) => {
-                panic!("Cannot connect to database! {}", e);
+                log::error!("Cannot connect to database! {}", e);
+                panic!();
             }
         }
-    } else {
+    } else if db_type_s.to_uppercase() == "SQLITE3" {
         // Assuming it's SQLite3
         let sqlite_path = std::env::var("SQLITE_PATH").expect("SQLite path not found!");
         match tokio_rusqlite::Connection::open(&sqlite_path).await {
             Ok(connection) => {
                 postgres_db = std::sync::Arc::new(None);
                 sqlite3_db = std::sync::Arc::new(Some(connection));
+                log::info!("Successfully created SQLite3 database file!");
             }
             Err(e) => {
-                panic!("Cannot connect to SQLite database! {}", e);
+                log::error!("Cannot connect to SQLite database! {}", e);
+                panic!();
             }
         }
+    } else {
+        log::error!("Not valid database choice. You can have either POSTGRES or SQLITE3");
+        panic!();
     }
+
+    log::info!("Running server! Check it out at http://localhost:8000");
 
     actix_web::HttpServer::new(move || {
         actix_web::App::new().service(routes::redirect::add).app_data(
@@ -60,6 +129,7 @@ async fn main() -> std::io::Result<()> {
                 sqlite3_db: sqlite3_db.clone()
             }),
         )
+        .wrap(actix_web::middleware::Logger::default())
     })
     .bind("0.0.0.0:8000")?
     .run()

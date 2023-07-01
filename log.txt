@@ -1,0 +1,1 @@
+[2023-07-01T08:47:39Z ERROR redirect] Not valid database choice. You can have either POSTGRES or SQLITE3
