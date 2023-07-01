@@ -7,6 +7,8 @@ pub struct AddParameters {
     pub url: String
 }
 
+pub type UpdateParamaters = AddParameters;
+
 pub struct States {
     pub postgres_db: std::sync::Arc<Option<tokio_postgres::Client>>,
     pub sqlite3_db: std::sync::Arc<Option<tokio_rusqlite::Connection>>
