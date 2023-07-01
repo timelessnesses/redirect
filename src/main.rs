@@ -13,6 +13,8 @@ fn build_config() -> String {
     )
 }
 
+const SQL: &str = include_str!("./data/sqls.sql");
+
 struct CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA{
     file: std::fs::File
 }
@@ -32,7 +34,7 @@ impl CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
 impl std::io::Write for CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        println!("{}",std::str::from_utf8(buf).unwrap());
+        let _ = std::io::stdout().write(buf);
         self.file.write(buf)
     }
     fn flush(&mut self) -> std::io::Result<()> {
@@ -71,7 +73,7 @@ async fn main() -> std::io::Result<()> {
 
     config_logger();
 
-    let mut db_type_s = String::new();
+    let db_type_s: String;
     let db_type = std::env::var("DB_TYPE");
     match db_type {
         Ok(s) => db_type_s = s,
@@ -120,10 +122,39 @@ async fn main() -> std::io::Result<()> {
         panic!();
     }
 
+    match (postgres_db.is_some(), sqlite3_db.is_some()) {
+        (true, false) => {
+            match postgres_db.as_ref().as_ref().unwrap().execute(SQL, &[]).await {
+                Err(e) => {
+                    log::error!("Cannot create a table! {}",e);
+                    panic!();
+                }
+                _ => {}
+            }
+        },
+        (false, true) => {
+            match sqlite3_db.as_ref().as_ref().unwrap().call(
+                |c| {
+                    c.execute(SQL, [])
+                }
+            ).await {
+                Err(e) => {
+                    log::error!("Cannot create a table! {}",e);
+                    panic!()
+                }
+                _ => {}
+            }
+        },
+        _ => {}
+    }
+
     log::info!("Running server! Check it out at http://localhost:8000");
 
     actix_web::HttpServer::new(move || {
-        actix_web::App::new().service(routes::redirect::add).app_data(
+        actix_web::App::new()
+        .service(routes::redirect::add)
+        .service(routes::redirect::get)
+        .app_data(
             actix_web::web::Data::new(routes::types::States {
                 postgres_db: postgres_db.clone(),
                 sqlite3_db: sqlite3_db.clone()

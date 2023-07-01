@@ -1,1 +1,12 @@
-[2023-07-01T08:47:39Z ERROR redirect] Not valid database choice. You can have either POSTGRES or SQLITE3
+[2023-07-01T09:29:25Z INFO  redirect] Successfully connected to PostgreSQL!
+[2023-07-01T09:29:25Z DEBUG tokio_postgres::prepare] preparing query s0: CREATE TABLE IF NOT EXISTS redirect(
+        url TEXT,
+        accessed BIGINT,
+        id TEXT UNIQUE PRIMARY KEY
+    )
+[2023-07-01T09:29:25Z DEBUG tokio_postgres::query] executing statement s0 with parameters: []
+[2023-07-01T09:29:25Z INFO  tokio_postgres::connection] NOTICE: relation "redirect" already exists, skipping
+[2023-07-01T09:29:25Z INFO  redirect] Running server! Check it out at http://localhost:8000
+[2023-07-01T09:29:25Z INFO  actix_server::builder] starting 2 workers
+[2023-07-01T09:29:25Z INFO  actix_server::server] Actix runtime found; starting in Actix runtime
+[2023-07-01T09:29:25Z INFO  actix_server::server] SIGTERM received; starting graceful shutdown
