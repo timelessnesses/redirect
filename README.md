@@ -1,6 +1,6 @@
 # timelessnesses.api.redirect
 
-A rust version of the python version.
+A rust version of the python version. Using actix-web and tokio
 
 ## How to use
 
