@@ -166,6 +166,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::redirect::listing)
             .service(routes::redirect::remove)
             .service(routes::redirect::stat)
+            .service(routes::redirect::stream_test)
             .service(routes::redirect::get)
             .app_data(actix_web::web::Data::new(routes::types::States {
                 postgres_db: postgres_db.clone(),

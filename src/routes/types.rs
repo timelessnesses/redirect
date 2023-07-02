@@ -24,3 +24,10 @@ pub struct ListingRequestedData {
     pub accessed: i64,
     pub id: String,
 }
+
+#[derive(serde_derive::Deserialize)]
+pub struct StreamingTest {
+    pub wait: i64,
+    pub till: i64,
+    pub output_amount: i64,
+}

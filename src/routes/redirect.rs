@@ -509,7 +509,7 @@ pub async fn listing(
                     actix_web::rt::spawn(async move {
                         match tx
                             .send(Ok(actix_web::web::Bytes::from(
-                                "List of redirect URLs!".to_owned().into_bytes(),
+                                "List of redirect URLs!\n".to_owned().into_bytes(),
                             )))
                             .await
                         {
@@ -519,6 +519,22 @@ pub async fn listing(
                                 return;
                             }
                         }
+
+                        if rows.len() == 0 {
+                            match tx
+                                .send(Ok(actix_web::web::Bytes::from(
+                                    "None!".to_owned().into_bytes(),
+                                )))
+                                .await
+                            {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    log::error!("Something went wrong when streaming data!: {}", e);
+                                    return;
+                                }
+                            }
+                        }
+
                         for row in rows {
                             let id: String = row.get("id");
                             let url: String = row.get("url");
@@ -584,6 +600,34 @@ pub async fn listing(
                         Result<actix_web::web::Bytes, actix_web::Error>,
                     >(10);
                     actix_web::rt::spawn(async move {
+                        match tx
+                            .send(Ok(actix_web::web::Bytes::from(
+                                "List of redirect URLs!\n".to_owned().into_bytes(),
+                            )))
+                            .await
+                        {
+                            Ok(_) => {}
+                            Err(e) => {
+                                log::error!("Something went wrong when streaming data!: {}", e);
+                                return;
+                            }
+                        }
+
+                        if rows.len() == 0 {
+                            match tx
+                                .send(Ok(actix_web::web::Bytes::from(
+                                    "None!".to_owned().into_bytes(),
+                                )))
+                                .await
+                            {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    log::error!("Something went wrong when streaming data!: {}", e);
+                                    return;
+                                }
+                            }
+                        }
+
                         for row in rows {
                             let id: String = row.id;
                             let url: String = row.url;
@@ -592,7 +636,10 @@ pub async fn listing(
                                 .into_bytes();
                             match tx.send(Ok(actix_web::web::Bytes::from(data))).await {
                                 Ok(_) => {}
-                                Err(_) => break,
+                                Err(e) => {
+                                    log::error!("Something went wrong when streaming data!: {}", e);
+                                    break;
+                                }
                             }
                         }
                     });
@@ -614,4 +661,49 @@ pub async fn listing(
         }
         _ => report_no_database(),
     }
+}
+
+#[actix_web::get("/stream_test")]
+pub async fn stream_test(
+    query: actix_web::web::Query<crate::routes::types::StreamingTest>,
+) -> impl actix_web::Responder {
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Result<actix_web::web::Bytes, actix_web::Error>>(
+        query.output_amount.try_into().unwrap(),
+    );
+    actix_web::rt::spawn(async move {
+        match tx
+            .send(Ok(actix_web::web::Bytes::from(
+                "Starting!".to_owned().into_bytes(),
+            )))
+            .await
+        {
+            Ok(_) => {}
+            Err(e) => {
+                log::error!("TESTING: stream test fails: {}", e);
+                return;
+            }
+        }
+        for i in 0..query.till {
+            let x = i.to_string() + "\n";
+            match tx.send(Ok(actix_web::web::Bytes::from(x))).await {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("TESTING: stream test fails: {}", e);
+                    break;
+                }
+            }
+            tokio::time::sleep(tokio::time::Duration::from_secs(
+                query.wait.try_into().unwrap(),
+            ))
+            .await;
+        }
+    });
+    return actix_web::HttpResponse::Ok().streaming(async_stream::stream! {
+        while let Some(item) = rx.recv().await {
+            match item {
+                Ok(data) => yield Ok(data),
+                Err(err) => yield Err(actix_web::Error::from(err))
+            }
+        }
+    });
 }
