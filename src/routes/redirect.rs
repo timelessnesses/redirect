@@ -89,7 +89,7 @@ pub async fn add(
             match db
                 .execute(
                     "INSERT INTO redirect(url, accessed, id) VALUES ($1, $2, $3)",
-                    &[&url, &(0 as i32), &id.to_string().as_str()],
+                    &[&url, &(0 as i64), &id.to_string().as_str()],
                 )
                 .await
             {
