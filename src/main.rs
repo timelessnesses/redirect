@@ -15,15 +15,15 @@ fn build_config() -> String {
 
 const SQL: &str = include_str!("./data/sqls.sql");
 
-struct CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA{
-    file: std::fs::File
+struct CustomTargetThatISpent4HoursOnAndItsWorkingBeautifully {
+    file: std::fs::File,
 }
 
-impl CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA {
-    fn new() -> Result<CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, std::io::Error> {
+impl CustomTargetThatISpent4HoursOnAndItsWorkingBeautifully {
+    fn new() -> Result<CustomTargetThatISpent4HoursOnAndItsWorkingBeautifully, std::io::Error> {
         let x = std::fs::File::create("log.txt");
         match x {
-            Ok(f) => return Ok(CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA {file: f}),
+            Ok(f) => return Ok(CustomTargetThatISpent4HoursOnAndItsWorkingBeautifully { file: f }),
             Err(e) => {
                 log::warn!("Cannot create log file.");
                 return Err(e);
@@ -32,7 +32,7 @@ impl CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     }
 }
 
-impl std::io::Write for CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA {
+impl std::io::Write for CustomTargetThatISpent4HoursOnAndItsWorkingBeautifully {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let _ = std::io::stdout().write(buf);
         self.file.write(buf)
@@ -40,12 +40,10 @@ impl std::io::Write for CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     fn flush(&mut self) -> std::io::Result<()> {
         match std::io::stdout().flush() {
             Err(e) => return Err(e),
-            Ok(_) => {
-                match self.file.flush() {
-                    Ok(_) => return Ok(()),
-                    Err(e) => return Err(e)
-                }
-            }
+            Ok(_) => match self.file.flush() {
+                Ok(_) => return Ok(()),
+                Err(e) => return Err(e),
+            },
         }
     }
 }
@@ -54,14 +52,17 @@ fn config_logger() {
     let mut b = env_logger::Builder::from_default_env();
     b.filter_level(log::LevelFilter::Debug);
     b.target(env_logger::Target::Stdout);
-    let x = CustomTargetAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA::new();
+    let x = CustomTargetThatISpent4HoursOnAndItsWorkingBeautifully::new();
 
     match x {
-        Ok(file_info) => {
-            b.target(env_logger::Target::Pipe(Box::new(file_info)));
-        },
+        Ok(target) => {
+            b.target(env_logger::Target::Pipe(Box::new(target)));
+        }
         Err(e) => {
-            log::warn!("{}",format!("Logger cannot create or write to log.txt. {}", e));
+            log::warn!(
+                "{}",
+                format!("Logger cannot create or write to log.txt. {}", e)
+            );
         }
     }
     b.init();
@@ -80,7 +81,7 @@ async fn main() -> std::io::Result<()> {
         Err(_) => {
             log::error!("No enviroment variable found for DB_TYPE.");
             panic!()
-        },
+        }
     }
 
     let postgres_db: std::sync::Arc<Option<tokio_postgres::Client>>;
@@ -124,27 +125,35 @@ async fn main() -> std::io::Result<()> {
 
     match (postgres_db.is_some(), sqlite3_db.is_some()) {
         (true, false) => {
-            match postgres_db.as_ref().as_ref().unwrap().execute(SQL, &[]).await {
+            match postgres_db
+                .as_ref()
+                .as_ref()
+                .unwrap()
+                .execute(SQL, &[])
+                .await
+            {
                 Err(e) => {
-                    log::error!("Cannot create a table! {}",e);
+                    log::error!("Cannot create a table! {}", e);
                     panic!();
                 }
                 _ => {}
             }
-        },
+        }
         (false, true) => {
-            match sqlite3_db.as_ref().as_ref().unwrap().call(
-                |c| {
-                    c.execute(SQL, [])
-                }
-            ).await {
+            match sqlite3_db
+                .as_ref()
+                .as_ref()
+                .unwrap()
+                .call(|c| c.execute(SQL, []))
+                .await
+            {
                 Err(e) => {
-                    log::error!("Cannot create a table! {}",e);
+                    log::error!("Cannot create a table! {}", e);
                     panic!()
                 }
                 _ => {}
             }
-        },
+        }
         _ => {}
     }
 
@@ -152,15 +161,17 @@ async fn main() -> std::io::Result<()> {
 
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
-        .service(routes::redirect::add)
-        .service(routes::redirect::get)
-        .app_data(
-            actix_web::web::Data::new(routes::types::States {
+            .service(routes::redirect::add)
+            .service(routes::redirect::update)
+            .service(routes::redirect::listing)
+            .service(routes::redirect::remove)
+            .service(routes::redirect::stat)
+            .service(routes::redirect::get)
+            .app_data(actix_web::web::Data::new(routes::types::States {
                 postgres_db: postgres_db.clone(),
-                sqlite3_db: sqlite3_db.clone()
-            }),
-        )
-        .wrap(actix_web::middleware::Logger::default())
+                sqlite3_db: sqlite3_db.clone(),
+            }))
+            .wrap(actix_web::middleware::Logger::default())
     })
     .bind("0.0.0.0:8000")?
     .run()
