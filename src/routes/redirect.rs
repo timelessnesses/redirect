@@ -38,7 +38,7 @@ pub async fn add(
             match id {
                 Ok(row) => {
                     if row.len() == 1 {
-                        let id: &str = row[0].get("url");
+                        let id: &str = row[0].get("id");
                         return actix_web::HttpResponse::Ok().body(format!(
                             "{}://{}/{}",
                             req.connection_info().scheme(),
